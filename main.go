@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -23,28 +25,35 @@ func main() {
 
 	// Define a route
 	router.POST("/api", func(c *gin.Context) {
-		fmt.Println("Received a POST request to /api")
+		// Example third-party API endpoint
+		thirdPartyAPI := "https://jsonplaceholder.typicode.com/users" // Replace with your actual third-party API
 
-		var requestBody map[string]interface{}
-		if err := c.BindJSON(&requestBody); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid JSON payload"})
+		// Make a GET request to the third-party API
+		resp, err := http.Get(thirdPartyAPI)
+		if err != nil {
+			fmt.Println("Error fetching data from third-party API:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data from third-party API"})
+			return
+		}
+		defer resp.Body.Close()
+
+		// Parse the third-party API response
+		var data []map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			fmt.Println("Error decoding API response:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse third-party API response"})
 			return
 		}
 
-		// Extract "data" as a list of arrays
-		data, exists := requestBody["data"].([]interface{})
-		if !exists {
-			c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
-			return
-		}
-
-		// Return the data as JSON
-		c.JSON(200, gin.H{
-			"message": "Data received successfully",
+		// Log the data and send it to the frontend
+		fmt.Println("Data received from third-party API:", data)
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Data fetched successfully",
 			"data":    data,
 		})
 	})
 
+	// Print a message when the server starts
 	fmt.Printf("Server is starting on port %s...\n", port)
 	router.Run(":" + port)
 }
