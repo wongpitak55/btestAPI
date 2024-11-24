@@ -103,6 +103,6 @@ func selfPing() {
 			fmt.Println("Self-ping response:", resp.Status)
 			resp.Body.Close()
 		}
-		time.Sleep(5 * time.Minute) // Adjust interval as needed
+		time.Sleep(10 * time.Minute) // Adjust interval as needed
 	}
 }
