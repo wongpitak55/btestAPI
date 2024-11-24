@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -82,7 +84,25 @@ func main() {
 		c.JSON(200, gin.H{"clients": allData})
 	})
 
+	// Start the self-ping mechanism
+	go selfPing()
+
 	// Start the server
 	fmt.Printf("Server is running on port %s...\n", port)
 	router.Run(":" + port)
+}
+
+// selfPing periodically sends a GET request to the server's own endpoint to keep it awake
+func selfPing() {
+	serverURL := "https://btestapi-am67.onrender.com/"
+	for {
+		resp, err := http.Get(serverURL)
+		if err != nil {
+			fmt.Println("Error self-pinging the server:", err)
+		} else {
+			fmt.Println("Self-ping response:", resp.Status)
+			resp.Body.Close()
+		}
+		time.Sleep(5 * time.Minute) // Adjust interval as needed
+	}
 }
