@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt" // To print to the console
-	"os"  // To get environment variables
+	"net/http"
+	"os" // To get environment variables
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,23 +32,30 @@ func main() {
 			return
 		}
 
-		// Extract "mobile" from the request body
-		mobile, exists := requestBody["mobile"].(string)
+		// Extract "data" as a list of arrays
+		data, exists := requestBody["data"].([]interface{})
 		if !exists {
-			// Log missing "mobile" field
-			fmt.Println("Error: Missing 'mobile' field in request payload")
-			c.JSON(400, gin.H{"error": "Missing 'mobile' field"})
+			// Log missing "data" field
+			fmt.Println("Error: Missing or invalid 'data' field in request payload")
+			c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
 			return
 		}
 
-		// Print the extracted "mobile" field
-		fmt.Printf("Received 'mobile': %s\n", mobile)
+		// Print the extracted data
+		fmt.Printf("Received 'data': %v\n", data)
 
-		// Send a JSON response
-		c.JSON(200, gin.H{
-			"message": "Data received successfully",
-			"mobile":  mobile,
-		})
+		// Create an HTML table
+		htmlContent := "<html><body><table border='1'>"
+		htmlContent += "<tr><th>Index</th><th>Values</th></tr>"
+
+		for i, row := range data {
+			htmlContent += fmt.Sprintf("<tr><td>%d</td><td>%v</td></tr>", i, row)
+		}
+
+		htmlContent += "</table></body></html>"
+
+		// Render the HTML table as a response
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(htmlContent))
 	})
 
 	// Print a message when the server starts
