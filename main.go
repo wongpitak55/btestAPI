@@ -8,7 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var dataStore [][]interface{} // Global variable to store received data
+// A map to store data for multiple clients
+var clientData = make(map[string][][]interface{})
 
 func main() {
 	// Get the port from the environment variable
@@ -23,41 +24,62 @@ func main() {
 	// Enable CORS for frontend requests
 	router.Use(cors.Default())
 
-	// Route to receive data from Postman or other clients
-	router.POST("/api", func(c *gin.Context) {
-		var requestBody map[string]interface{}
-		if err := c.BindJSON(&requestBody); err != nil {
-			c.JSON(400, gin.H{"error": "Invalid JSON payload"})
-			return
-		}
+	// API endpoint for each client
+	clients := []string{"client1", "client2", "client3"} // Add more clients here
 
-		// Extract "data" as a list of arrays
-		data, exists := requestBody["data"].([]interface{})
-		if !exists {
-			c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
-			return
-		}
+	// Create POST and GET endpoints for each client
+	for _, client := range clients {
+		client := client // Capture range variable
 
-		// Convert data to [][]interface{} for storage
-		var formattedData [][]interface{}
-		for _, item := range data {
-			row, ok := item.([]interface{})
-			if ok {
-				formattedData = append(formattedData, row)
+		// POST API for receiving data for a specific client
+		router.POST(fmt.Sprintf("/api/%s", client), func(c *gin.Context) {
+			var requestBody map[string]interface{}
+			if err := c.BindJSON(&requestBody); err != nil {
+				c.JSON(400, gin.H{"error": "Invalid JSON payload"})
+				return
 			}
+
+			// Extract "data" as a list of arrays
+			data, exists := requestBody["data"].([]interface{})
+			if !exists {
+				c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
+				return
+			}
+
+			// Convert data to [][]interface{} for storage
+			var formattedData [][]interface{}
+			for _, item := range data {
+				row, ok := item.([]interface{})
+				if ok {
+					formattedData = append(formattedData, row)
+				}
+			}
+
+			// Store the data for the specific client
+			clientData[client] = formattedData
+			fmt.Printf("Data stored successfully for %s: %v\n", client, clientData[client])
+
+			// Respond to the client
+			c.JSON(200, gin.H{"message": fmt.Sprintf("Data stored successfully for %s", client)})
+		})
+
+		// GET API to serve data for a specific client
+		router.GET(fmt.Sprintf("/data/%s", client), func(c *gin.Context) {
+			data := clientData[client]
+			c.JSON(200, gin.H{"data": data})
+		})
+	}
+
+	// GET API to serve data for all clients
+	router.GET("/data/all", func(c *gin.Context) {
+		allData := []map[string]interface{}{}
+		for client, data := range clientData {
+			allData = append(allData, map[string]interface{}{
+				"client": client,
+				"data":   data,
+			})
 		}
-
-		// Store the received data
-		dataStore = formattedData
-		fmt.Println("Data stored successfully:", dataStore)
-
-		// Respond to the client
-		c.JSON(200, gin.H{"message": "Data stored successfully"})
-	})
-
-	// Route to serve the stored data for the frontend
-	router.GET("/data", func(c *gin.Context) {
-		c.JSON(200, gin.H{"data": dataStore})
+		c.JSON(200, gin.H{"clients": allData})
 	})
 
 	// Start the server
