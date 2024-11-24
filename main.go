@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
+
+var dataStore [][]interface{} // Global variable to store received data
 
 func main() {
 	// Get the port from the environment variable
@@ -20,40 +20,47 @@ func main() {
 	// Create a new Gin router
 	router := gin.Default()
 
-	// Enable CORS
+	// Enable CORS for frontend requests
 	router.Use(cors.Default())
 
-	// Define a route
+	// Route to receive data from Postman or other clients
 	router.POST("/api", func(c *gin.Context) {
-		// Example third-party API endpoint
-		thirdPartyAPI := "https://jsonplaceholder.typicode.com/users" // Replace with your actual third-party API
-
-		// Make a GET request to the third-party API
-		resp, err := http.Get(thirdPartyAPI)
-		if err != nil {
-			fmt.Println("Error fetching data from third-party API:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data from third-party API"})
-			return
-		}
-		defer resp.Body.Close()
-
-		// Parse the third-party API response
-		var data []map[string]interface{}
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			fmt.Println("Error decoding API response:", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse third-party API response"})
+		var requestBody map[string]interface{}
+		if err := c.BindJSON(&requestBody); err != nil {
+			c.JSON(400, gin.H{"error": "Invalid JSON payload"})
 			return
 		}
 
-		// Log the data and send it to the frontend
-		fmt.Println("Data received from third-party API:", data)
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Data fetched successfully",
-			"data":    data,
-		})
+		// Extract "data" as a list of arrays
+		data, exists := requestBody["data"].([]interface{})
+		if !exists {
+			c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
+			return
+		}
+
+		// Convert data to [][]interface{} for storage
+		var formattedData [][]interface{}
+		for _, item := range data {
+			row, ok := item.([]interface{})
+			if ok {
+				formattedData = append(formattedData, row)
+			}
+		}
+
+		// Store the received data
+		dataStore = formattedData
+		fmt.Println("Data stored successfully:", dataStore)
+
+		// Respond to the client
+		c.JSON(200, gin.H{"message": "Data stored successfully"})
 	})
 
-	// Print a message when the server starts
-	fmt.Printf("Server is starting on port %s...\n", port)
+	// Route to serve the stored data for the frontend
+	router.GET("/data", func(c *gin.Context) {
+		c.JSON(200, gin.H{"data": dataStore})
+	})
+
+	// Start the server
+	fmt.Printf("Server is running on port %s...\n", port)
 	router.Run(":" + port)
 }
