@@ -25,7 +25,7 @@ func main() {
 	router.Use(cors.Default())
 
 	// API endpoint for each client
-	clients := []string{"client1", "client2", "client3"} // Add more clients here
+	clients := []string{"worldair", "client2", "client3"} // Add more clients here
 
 	// Create POST and GET endpoints for each client
 	for _, client := range clients {
