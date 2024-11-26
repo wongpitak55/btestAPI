@@ -10,8 +10,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// A map to store data for multiple clients
+// Maps to store data for multiple clients and bot logs
 var clientData = make(map[string][][]interface{})
+var botLogData = make(map[string][][]interface{}) // Separate storage for bot logs
 
 func main() {
 	// Get the port from the environment variable
@@ -82,6 +83,63 @@ func main() {
 			})
 		}
 		c.JSON(200, gin.H{"clients": allData})
+	})
+
+	// Bot Log APIs
+	botLogEndpoints := []string{"worldair", "log2", "log3"} // Add more bot log categories as needed
+
+	for _, botLog := range botLogEndpoints {
+		botLog := botLog // Capture range variable
+
+		// POST API for receiving bot log data
+		router.POST(fmt.Sprintf("/api/bot/%s", botLog), func(c *gin.Context) {
+			var requestBody map[string]interface{}
+			if err := c.BindJSON(&requestBody); err != nil {
+				c.JSON(400, gin.H{"error": "Invalid JSON payload"})
+				return
+			}
+
+			// Extract "data" as a list of arrays
+			data, exists := requestBody["data"].([]interface{})
+			if !exists {
+				c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
+				return
+			}
+
+			// Convert data to [][]interface{} for storage
+			var formattedData [][]interface{}
+			for _, item := range data {
+				row, ok := item.([]interface{})
+				if ok {
+					formattedData = append(formattedData, row)
+				}
+			}
+
+			// Store the data for the specific bot log category
+			botLogData[botLog] = formattedData
+			fmt.Printf("Bot log data stored successfully for %s: %v\n", botLog, botLogData[botLog])
+
+			// Respond to the client
+			c.JSON(200, gin.H{"message": fmt.Sprintf("Bot log data stored successfully for %s", botLog)})
+		})
+
+		// GET API to serve bot log data for a specific category
+		router.GET(fmt.Sprintf("/data/bot/%s", botLog), func(c *gin.Context) {
+			data := botLogData[botLog]
+			c.JSON(200, gin.H{"data": data})
+		})
+	}
+
+	// GET API to serve all bot log data
+	router.GET("/data/bot/all", func(c *gin.Context) {
+		allBotLogData := []map[string]interface{}{}
+		for botLog, data := range botLogData {
+			allBotLogData = append(allBotLogData, map[string]interface{}{
+				"botLog": botLog,
+				"data":   data,
+			})
+		}
+		c.JSON(200, gin.H{"botLogs": allBotLogData})
 	})
 
 	// Start the self-ping mechanism
