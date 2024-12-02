@@ -12,7 +12,8 @@ import (
 
 // Maps to store data for multiple clients and bot logs
 var clientData = make(map[string][][]interface{})
-var botLogData = make(map[string][][]interface{}) // Separate storage for bot logs
+var botLogData = make(map[string][][]interface{})   // Separate storage for bot logs
+var hardDiskData = make(map[string][][]interface{}) // Separate storage for hardDiskData logs
 
 func main() {
 	// Get the port from the environment variable
@@ -140,6 +141,63 @@ func main() {
 			})
 		}
 		c.JSON(200, gin.H{"botLogs": allBotLogData})
+	})
+
+	// Hard Disk Used APIs
+	hardDiskUsedEndpoints := []string{"worldair", "log2", "log3"} // Add more hard disk categories as needed
+
+	for _, hardDisk := range hardDiskUsedEndpoints {
+		hardDisk := hardDisk // Capture range variable
+
+		// POST API for receiving hard disk used data
+		router.POST(fmt.Sprintf("/api/harddisk/%s", hardDisk), func(c *gin.Context) {
+			var requestBody map[string]interface{}
+			if err := c.BindJSON(&requestBody); err != nil {
+				c.JSON(400, gin.H{"error": "Invalid JSON payload"})
+				return
+			}
+
+			// Extract "data" as a list of arrays
+			data, exists := requestBody["data"].([]interface{})
+			if !exists {
+				c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
+				return
+			}
+
+			// Convert data to [][]interface{} for storage
+			var formattedData [][]interface{}
+			for _, item := range data {
+				row, ok := item.([]interface{})
+				if ok {
+					formattedData = append(formattedData, row)
+				}
+			}
+
+			// Store the data for the specific hard disk category
+			hardDiskData[hardDisk] = formattedData
+			fmt.Printf("Hard disk data stored successfully for %s: %v\n", hardDisk, hardDiskData[hardDisk])
+
+			// Respond to the client
+			c.JSON(200, gin.H{"message": fmt.Sprintf("Hard disk data stored successfully for %s", hardDisk)})
+		})
+
+		// GET API to serve hard disk used data for a specific category
+		router.GET(fmt.Sprintf("/data/harddisk/%s", hardDisk), func(c *gin.Context) {
+			data := hardDiskData[hardDisk]
+			c.JSON(200, gin.H{"data": data})
+		})
+	}
+
+	// GET API to serve all hard disk used data
+	router.GET("/data/harddisk/all", func(c *gin.Context) {
+		allHardDiskData := []map[string]interface{}{}
+		for hardDisk, data := range hardDiskData {
+			allHardDiskData = append(allHardDiskData, map[string]interface{}{
+				"hardDisk": hardDisk,
+				"data":     data,
+			})
+		}
+		c.JSON(200, gin.H{"hardDisks": allHardDiskData})
 	})
 
 	// Start the self-ping mechanism
