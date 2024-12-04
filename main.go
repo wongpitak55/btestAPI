@@ -144,7 +144,7 @@ func main() {
 	})
 
 	// Hard Disk Used APIs
-	hardDiskUsedEndpoints := []string{"worldair", "log2", "log3"} // Add more hard disk categories as needed
+	hardDiskUsedEndpoints := []string{"hcs", "worldair", "log2", "log3"} // Add more hard disk categories as needed
 
 	for _, hardDisk := range hardDiskUsedEndpoints {
 		hardDisk := hardDisk // Capture range variable
