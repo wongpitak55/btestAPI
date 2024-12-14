@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -82,9 +84,10 @@ func main() {
 		for {
 			time.Sleep(1 * time.Minute) // Check every minute
 			mu.Lock()
-			for _, status := range statusMap {
+			for computerName, status := range statusMap {
 				if time.Since(status.LastSeen) > timeout {
 					status.Status = "offline"
+					go sendOfflineStatus(computerName) // Send API asynchronously
 				}
 			}
 			mu.Unlock()
@@ -282,6 +285,28 @@ func main() {
 	// Start the server
 	fmt.Printf("Server is running on port %s...\n", port)
 	router.Run(":" + port)
+}
+
+// Function to send an API request to mark a computer as offline
+func sendOfflineStatus(computerName string) {
+	apiURL := "https://btestapi-am67.onrender.com/check-online" // Self API endpoint
+
+	// Prepare payload
+	payload := map[string]string{
+		"computer_name": computerName,
+		"status":        "offline",
+	}
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	// Send POST request
+	resp, err := http.Post(apiURL, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
 }
 
 // selfPing periodically sends a GET request to the server's own endpoint to keep it awake
