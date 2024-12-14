@@ -62,8 +62,8 @@ func main() {
 		mu.Lock()
 		if _, exists := statusMap[requestData.ComputerName]; !exists {
 			statusMap[requestData.ComputerName] = &ComputerStatus{
-				LastSeen: time.Time{}, // Zero value
-				Status:   "offline",   // Default to offline
+				LastSeen: time.Now(),
+				Status:   "offline", // Default to offline
 			}
 		}
 		statusMap[requestData.ComputerName].LastSeen = time.Now()
