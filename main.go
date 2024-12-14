@@ -43,7 +43,7 @@ func main() {
 	// Enable CORS for frontend requests
 	router.Use(cors.Default())
 
-	//Part  check remote computer status online or not
+	//Part   check remote computer status online or not
 	// Define a route to check if remote computer is online
 	// Define a route to handle "check-online" requests
 	router.POST("/check-online", func(c *gin.Context) {
