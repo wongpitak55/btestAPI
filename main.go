@@ -28,6 +28,40 @@ func main() {
 	// Enable CORS for frontend requests
 	router.Use(cors.Default())
 
+	//Part  check remote computer status online or not
+	// Define a route to check if remote computer is online
+	router.POST("/check-online", func(c *gin.Context) {
+		// Expected JSON payload structure
+		var requestData struct {
+			ComputerName string `json:"computer_name"` // Name of the remote computer
+			Status       string `json:"status"`        // "online" or "offline"
+		}
+
+		// Parse JSON from the client
+		if err := c.ShouldBindJSON(&requestData); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid request format",
+			})
+			return
+		}
+
+		// Example validation: Check if the status is "online"
+		if requestData.Status == "online" {
+			c.JSON(http.StatusOK, gin.H{
+				"message":         "Remote computer is online",
+				"computer_name":   requestData.ComputerName,
+				"received_status": requestData.Status,
+			})
+		} else {
+			c.JSON(http.StatusOK, gin.H{
+				"message":         "Remote computer is offline",
+				"computer_name":   requestData.ComputerName,
+				"received_status": requestData.Status,
+			})
+		}
+	})
+
+	//Part  errorlog data and botprocesslog data
 	// API endpoint for each client
 	clients := []string{"worldair", "client2", "client3"} // Add more clients here
 
