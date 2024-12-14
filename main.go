@@ -79,7 +79,7 @@ func main() {
 		for {
 			time.Sleep(1 * time.Minute) // Check every minute
 			mu.Lock()
-			for computerName, status := range statusMap {
+			for _, status := range statusMap {
 				if time.Since(status.LastSeen) > timeout {
 					status.Status = "offline"
 				}
