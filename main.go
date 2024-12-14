@@ -61,7 +61,10 @@ func main() {
 		// Update the statusMap with the current timestamp
 		mu.Lock()
 		if _, exists := statusMap[requestData.ComputerName]; !exists {
-			statusMap[requestData.ComputerName] = &ComputerStatus{}
+			statusMap[requestData.ComputerName] = &ComputerStatus{
+				LastSeen: time.Time{}, // Zero value
+				Status:   "offline",   // Default to offline
+			}
 		}
 		statusMap[requestData.ComputerName].LastSeen = time.Now()
 		statusMap[requestData.ComputerName].Status = "online"
