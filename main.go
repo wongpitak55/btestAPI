@@ -69,7 +69,7 @@ func main() {
 			}
 		}
 		statusMap[requestData.ComputerName].LastSeen = time.Now()
-		statusMap[requestData.ComputerName].Status = "online"
+		statusMap[requestData.ComputerName].Status = requestData.Status
 		mu.Unlock()
 
 		c.JSON(http.StatusOK, gin.H{
