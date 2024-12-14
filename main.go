@@ -4,10 +4,23 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+)
+
+// Structure to store the last heartbeat time for each computer
+type ComputerStatus struct {
+	LastSeen time.Time
+	Status   string
+}
+
+var (
+	statusMap = make(map[string]*ComputerStatus) // Map to store computer statuses
+	mu        sync.Mutex                         // Mutex to protect access to statusMap
+	timeout   = 8 * time.Minute                  // Timeout duration
 )
 
 // Maps to store data for multiple clients and bot logs
@@ -30,8 +43,8 @@ func main() {
 
 	//Part  check remote computer status online or not
 	// Define a route to check if remote computer is online
+	// Define a route to handle "check-online" requests
 	router.POST("/check-online", func(c *gin.Context) {
-		// Expected JSON payload structure
 		var requestData struct {
 			ComputerName string `json:"computer_name"` // Name of the remote computer
 			Status       string `json:"status"`        // "online" or "offline"
@@ -45,20 +58,46 @@ func main() {
 			return
 		}
 
-		// Example validation: Check if the status is "online"
-		if requestData.Status == "online" {
-			c.JSON(http.StatusOK, gin.H{
-				"message":         "Remote computer is online",
-				"computer_name":   requestData.ComputerName,
-				"received_status": requestData.Status,
-			})
-		} else {
-			c.JSON(http.StatusOK, gin.H{
-				"message":         "Remote computer is offline",
-				"computer_name":   requestData.ComputerName,
-				"received_status": requestData.Status,
-			})
+		// Update the statusMap with the current timestamp
+		mu.Lock()
+		if _, exists := statusMap[requestData.ComputerName]; !exists {
+			statusMap[requestData.ComputerName] = &ComputerStatus{}
 		}
+		statusMap[requestData.ComputerName].LastSeen = time.Now()
+		statusMap[requestData.ComputerName].Status = "online"
+		mu.Unlock()
+
+		c.JSON(http.StatusOK, gin.H{
+			"message":         "Status updated to online",
+			"computer_name":   requestData.ComputerName,
+			"received_status": requestData.Status,
+		})
+	})
+
+	// Goroutine to check for inactive computers
+	go func() {
+		for {
+			time.Sleep(1 * time.Minute) // Check every minute
+			mu.Lock()
+			for computerName, status := range statusMap {
+				if time.Since(status.LastSeen) > timeout {
+					status.Status = "offline"
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+
+	// Define a route to get the current status of all computers
+	router.GET("/statuses", func(c *gin.Context) {
+		mu.Lock()
+		defer mu.Unlock()
+
+		response := make(map[string]string)
+		for computerName, status := range statusMap {
+			response[computerName] = status.Status
+		}
+		c.JSON(http.StatusOK, response)
 	})
 
 	//Part  errorlog data and botprocesslog data
