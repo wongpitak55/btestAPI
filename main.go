@@ -33,18 +33,32 @@ var hardDiskData = make(map[string][][]interface{}) // Separate storage for hard
 
 // Function to send email
 func sendEmail(subject, body string) error {
-	mailer := gomail.NewMessage()
-	mailer.SetHeader("From", "maintenancegreenmoons@gmail.com")
-	mailer.SetHeader("To", "maintenancegreenmoons@gmail.com")
-	mailer.SetHeader("Subject", subject)
-	mailer.SetBody("text/plain", body)
 
-	dialer := gomail.NewDialer("smtp.example.com", 587, "maintenancegreenmoons@gmail.com", "aoqtlaepsucvdksf")
+	// Email configuration
+	smtpHost := "smtp.gmail.com" // Replace with your SMTP server address
+	smtpPort := 587              // SMTP server port (use 465 for SSL or 587 for STARTTLS)
+	emailFrom := "maintenancegreenmoons@gmail.com"
+	emailPassword := "aoqtlaepsucvdksf" // Replace with your email password or app-specific password
+	emailTo := "maintenancegreenmoons@gmail.com"
 
-	// Send email
-	if err := dialer.DialAndSend(mailer); err != nil {
+	// Create a new message
+	m := gomail.NewMessage()
+	m.SetHeader("From", emailFrom)
+	m.SetHeader("To", emailTo)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/plain", body)
+
+	// Create a new dialer
+	d := gomail.NewDialer(smtpHost, smtpPort, emailFrom, emailPassword)
+
+	// Send the email
+	if err := d.DialAndSend(m); err != nil {
+		fmt.Println("Error sending email:", err)
 		return err
 	}
+
+	fmt.Println("Email sent successfully!")
+
 	return nil
 }
 
