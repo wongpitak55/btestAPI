@@ -31,6 +31,8 @@ var clientData = make(map[string][][]interface{})
 var botLogData = make(map[string][][]interface{})   // Separate storage for bot logs
 var hardDiskData = make(map[string][][]interface{}) // Separate storage for hardDiskData logs
 
+var notifiedMap = make(map[string]bool) // Track computers that have already sent notifications
+
 // Function to send email
 func sendEmail(subject, body string) error {
 
@@ -139,8 +141,13 @@ func main() {
 			response[computerName] = status.Status
 
 			if status.Status == "offline" {
-				offlineFound = true
-				emailBody += fmt.Sprintf("- %s\n", computerName)
+				if !notifiedMap[computerName] { // Check if this computer has already been notified
+					offlineFound = true
+					emailBody += fmt.Sprintf("- %s\n", computerName)
+					notifiedMap[computerName] = true // Mark as notified
+				}
+			} else {
+				notifiedMap[computerName] = false // Reset notification state if status is not offline
 			}
 		}
 
@@ -153,6 +160,36 @@ func main() {
 
 		c.JSON(http.StatusOK, response)
 	})
+
+	/*
+		// Define a route to get the current status of all computers
+		router.GET("/statuses", func(c *gin.Context) {
+			mu.Lock()
+			defer mu.Unlock()
+
+			response := make(map[string]string)
+			emailBody := "The following computers are offline:\n"
+			offlineFound := false
+
+			for computerName, status := range statusMap {
+				response[computerName] = status.Status
+
+				if status.Status == "offline" {
+					offlineFound = true
+					emailBody += fmt.Sprintf("- %s\n", computerName)
+				}
+			}
+
+			if offlineFound {
+				if err := sendEmail("Offline Computers Alert", emailBody); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email", "details": err.Error()})
+					return
+				}
+			}
+
+			c.JSON(http.StatusOK, response)
+		})
+	*/
 
 	// Define a route to get the current status of all computers
 	/*
