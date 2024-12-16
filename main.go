@@ -207,6 +207,8 @@ func main() {
 
 	//Part  errorlog data and botprocesslog data
 	// API endpoint for each client
+
+	// List of clients
 	clients := []string{"worldair", "client2", "client3"} // Add more clients here
 
 	// Create POST and GET endpoints for each client
@@ -228,12 +230,13 @@ func main() {
 				return
 			}
 
-			// Convert data to [][]interface{} for storage
+			// Convert data to [][]interface{} for storage, adding client name as the first column
 			var formattedData [][]interface{}
 			for _, item := range data {
 				row, ok := item.([]interface{})
 				if ok {
-					formattedData = append(formattedData, row)
+					formattedRow := append([]interface{}{client}, row...) // Add client name as the first column
+					formattedData = append(formattedData, formattedRow)
 				}
 			}
 
@@ -248,7 +251,18 @@ func main() {
 		// GET API to serve data for a specific client
 		router.GET(fmt.Sprintf("/data/%s", client), func(c *gin.Context) {
 			data := clientData[client]
-			c.JSON(200, gin.H{"data": data})
+
+			// Ensure client name is the first column in the response
+			responseData := []map[string]interface{}{}
+			for _, row := range data {
+				responseRow := map[string]interface{}{
+					"client": client,
+					"data":   row[1:], // Exclude the client column from individual row data
+				}
+				responseData = append(responseData, responseRow)
+			}
+
+			c.JSON(200, gin.H{"data": responseData})
 		})
 	}
 
@@ -256,13 +270,80 @@ func main() {
 	router.GET("/data/all", func(c *gin.Context) {
 		allData := []map[string]interface{}{}
 		for client, data := range clientData {
+			clientRows := []map[string]interface{}{}
+			for _, row := range data {
+				clientRows = append(clientRows, map[string]interface{}{
+					"client": client,
+					"data":   row[1:], // Exclude the client column from individual row data
+				})
+			}
 			allData = append(allData, map[string]interface{}{
 				"client": client,
-				"data":   data,
+				"data":   clientRows,
 			})
 		}
 		c.JSON(200, gin.H{"clients": allData})
 	})
+
+	/*
+		clients := []string{"worldair", "client2", "client3"} // Add more clients here
+
+		// Create POST and GET endpoints for each client
+		for _, client := range clients {
+			client := client // Capture range variable
+
+			// POST API for receiving data for a specific client
+			router.POST(fmt.Sprintf("/api/%s", client), func(c *gin.Context) {
+				var requestBody map[string]interface{}
+				if err := c.BindJSON(&requestBody); err != nil {
+					c.JSON(400, gin.H{"error": "Invalid JSON payload"})
+					return
+				}
+
+				// Extract "data" as a list of arrays
+				data, exists := requestBody["data"].([]interface{})
+				if !exists {
+					c.JSON(400, gin.H{"error": "Missing or invalid 'data' field"})
+					return
+				}
+
+				// Convert data to [][]interface{} for storage
+				var formattedData [][]interface{}
+				for _, item := range data {
+					row, ok := item.([]interface{})
+					if ok {
+						formattedData = append(formattedData, row)
+					}
+				}
+
+				// Store the data for the specific client
+				clientData[client] = formattedData
+				fmt.Printf("Data stored successfully for %s: %v\n", client, clientData[client])
+
+				// Respond to the client
+				c.JSON(200, gin.H{"message": fmt.Sprintf("Data stored successfully for %s", client)})
+			})
+
+			// GET API to serve data for a specific client
+			router.GET(fmt.Sprintf("/data/%s", client), func(c *gin.Context) {
+				data := clientData[client]
+				c.JSON(200, gin.H{"data": data})
+			})
+		}
+
+		// GET API to serve data for all clients
+		router.GET("/data/all", func(c *gin.Context) {
+			allData := []map[string]interface{}{}
+			for client, data := range clientData {
+				allData = append(allData, map[string]interface{}{
+					"client": client,
+					"data":   data,
+				})
+			}
+			c.JSON(200, gin.H{"clients": allData})
+		})
+
+	*/
 
 	// Bot Log APIs
 	botLogEndpoints := []string{"worldair", "log2", "log3"} // Add more bot log categories as needed
